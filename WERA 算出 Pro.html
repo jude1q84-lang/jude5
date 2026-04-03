@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WERA & WHIP Calculator Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .tab-active {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="card w-full max-w-lg p-8">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">WERA 算出 Pro</h1>
+            <p class="text-gray-500 mt-2 font-medium">WHIP × 5 ＋ 防御率 (ERA)</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button id="tab-direct" class="flex-1 py-2 text-sm font-bold text-gray-500 tab-active">指標を直接入力</button>
+            <button id="tab-stats" class="flex-1 py-2 text-sm font-bold text-gray-500">成績から入力</button>
+        </div>
+        
+        <!-- Mode 2: Direct Indicators (Now Default) -->
+        <div id="mode-direct" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">WHIP</label>
+                    <input type="number" id="direct-whip" step="0.01" placeholder="1.20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">防御率 (ERA)</label>
+                    <input type="number" id="direct-era" step="0.01" placeholder="3.50" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <p class="text-[11px] text-gray-400 text-center italic">※WHIPと防御率の既知の値を入力してください</p>
+        </div>
+
+        <!-- Mode 1: From Stats -->
+        <div id="mode-stats" class="hidden space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">被安打 (H)</label>
+                    <input type="number" id="hits" placeholder="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">与四球 (BB)</label>
+                    <input type="number" id="walks" placeholder="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">自責点 (ER)</label>
+                    <input type="number" id="er" placeholder="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">投球回 (IP)</label>
+                    <div class="flex gap-1">
+                        <input type="number" id="innings" placeholder="回" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <select id="outs" class="w-20 px-1 py-2 border border-gray-300 rounded-lg bg-white text-xs">
+                            <option value="0">.0</option>
+                            <option value="0.3333">.1</option>
+                            <option value="0.6666">.2</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Card -->
+        <div class="mt-8 p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl text-center text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="text-xs font-bold text-blue-100 uppercase tracking-widest mb-1">Total WERA</div>
+                <div id="wera-res" class="text-6xl font-black mb-2">0.00</div>
+                <div id="rating-label" class="text-sm font-bold bg-white/20 inline-block px-4 py-1 rounded-full">-</div>
+            </div>
+            <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full"></div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div id="breakdown" class="mt-6 grid grid-cols-2 gap-4">
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                <div class="text-[10px] font-bold text-gray-400 uppercase">Current WHIP</div>
+                <div id="whip-display" class="text-lg font-bold text-gray-700">0.00</div>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                <div class="text-[10px] font-bold text-gray-400 uppercase">Current ERA</div>
+                <div id="era-display" class="text-lg font-bold text-gray-700">0.00</div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+            <button id="reset-btn" class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0.0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                入力内容をリセット
+            </button>
+        </div>
+
+        <footer class="mt-8 text-[11px] text-gray-400 leading-relaxed border-t pt-4">
+            <p><strong>WERAについて:</strong> WHIPに5の重みを付け、ERAを加算した指標です。10.0以下なら非常に優秀な投手と言えます。入力内容は自動的に保存されます。</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentMode = localStorage.getItem('wera_mode') || 'direct';
+
+        const displays = {
+            wera: document.getElementById('wera-res'),
+            rating: document.getElementById('rating-label'),
+            whip: document.getElementById('whip-display'),
+            era: document.getElementById('era-display')
+        };
+
+        const statsInputs = ['hits', 'walks', 'er', 'innings', 'outs'];
+        const directInputs = ['direct-whip', 'direct-era'];
+        const allInputs = [...statsInputs, ...directInputs];
+
+        // Tab Switching
+        document.getElementById('tab-stats').addEventListener('click', () => switchMode('stats'));
+        document.getElementById('tab-direct').addEventListener('click', () => switchMode('direct'));
+        document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+        // Initialization
+        window.onload = () => {
+            loadSavedData();
+            switchMode(currentMode);
+        };
+
+        function switchMode(mode) {
+            currentMode = mode;
+            localStorage.setItem('wera_mode', mode);
+            document.getElementById('mode-stats').classList.toggle('hidden', mode !== 'stats');
+            document.getElementById('mode-direct').classList.toggle('hidden', mode !== 'direct');
+            document.getElementById('tab-stats').classList.toggle('tab-active', mode === 'stats');
+            document.getElementById('tab-direct').classList.toggle('tab-active', mode === 'direct');
+            calculate();
+        }
+
+        function calculate() {
+            let whip = 0, era = 0, wera = 0;
+
+            if (currentMode === 'stats') {
+                const h = parseFloat(document.getElementById('hits').value) || 0;
+                const bb = parseFloat(document.getElementById('walks').value) || 0;
+                const er = parseFloat(document.getElementById('er').value) || 0;
+                const ipWhole = parseFloat(document.getElementById('innings').value) || 0;
+                const ipFraction = parseFloat(document.getElementById('outs').value) || 0;
+                const totalIP = ipWhole + ipFraction;
+
+                if (totalIP > 0) {
+                    whip = (h + bb) / totalIP;
+                    era = (er * 9) / totalIP;
+                }
+            } else {
+                whip = parseFloat(document.getElementById('direct-whip').value) || 0;
+                era = parseFloat(document.getElementById('direct-era').value) || 0;
+            }
+
+            wera = (whip * 5) + era;
+
+            // UI Update
+            displays.wera.innerText = wera.toFixed(2);
+            displays.whip.innerText = whip.toFixed(2);
+            displays.era.innerText = era.toFixed(2);
+            
+            updateRating(wera);
+            saveData();
+        }
+
+        function updateRating(wera) {
+            if (wera <= 0) {
+                displays.rating.innerText = "-";
+                return;
+            }
+
+            let label = "";
+            if (wera <= 7.0) label = "神 (Godly)";
+            else if (wera <= 9.0) label = "素晴らしい (Excellent)";
+            else if (wera <= 11.0) label = "平均的 (Good)";
+            else if (wera <= 13.0) label = "不安定 (Warning)";
+            else label = "厳しい (Poor)";
+
+            displays.rating.innerText = label;
+        }
+
+        function saveData() {
+            const data = {};
+            allInputs.forEach(id => {
+                data[id] = document.getElementById(id).value;
+            });
+            localStorage.setItem('wera_data', JSON.stringify(data));
+        }
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('wera_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                allInputs.forEach(id => {
+                    if (data[id] !== undefined) {
+                        document.getElementById(id).value = data[id];
+                    }
+                });
+            }
+        }
+
+        function resetAll() {
+            allInputs.forEach(id => {
+                document.getElementById(id).value = id === 'outs' ? "0" : "";
+            });
+            localStorage.removeItem('wera_data');
+            calculate();
+        }
+
+        // Listeners
+        allInputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', calculate);
+        });
+    </script>
+</body>
+</html>
